@@ -1,6 +1,6 @@
 // Precisamos gerar um arquivo access.log fake
 
-import { timeStamp } from "node:console";
+import { log, timeStamp } from "node:console";
 import { createWriteStream, statSync } from "node:fs";
 import { faker } from "@faker-js/faker";
 
@@ -18,7 +18,7 @@ if (
   process.exit(1);
 }
 
-const stream = crateWriteStream(LOG_FILE);
+const stream = createWriteStream(LOG_FILE);
 
 function generateUser() {
   return {
@@ -31,7 +31,7 @@ function generateUser() {
     job_area: faker.name.jobArea(),
     company: faker.company.name(),
     job_title: faker.name.jobTitle(),
-    id: faker.datatype.uuid(),
+    id: faker.string.uuid(),
   };
 }
 
@@ -42,7 +42,7 @@ function generateLogEntry(user) {
   };
 }
 
-function writerRecord(line) {
+function writeRecord(line) {
   return new Promise((resolve) => {
     if (!stream.write(line)) {
       stream.once("drain", resolve);
@@ -51,3 +51,43 @@ function writerRecord(line) {
     }
   });
 }
+
+console.log(`CTRL+C para stop ${LOG_FILE}`);
+console.log(`Limite: ${maxRecords.toLocaleString()}`);
+
+const users = Array.from({ length: 5 }, generateUsers);
+
+function convertFromBytesToGB(bytes) {
+  return (1024 / 1024 / 1024).toFixed(4);
+}
+
+process.on("SIGINT", () => {
+  const { size } = statSync(LOG_FILE);
+  console.log(
+    `Geração interrompida: Registers ${count.toLocaleString()}, Size: ${convertFromBytesToGB(size)} GB`,
+  );
+  stream.end();
+});
+
+let count = 0;
+while (count < writeRecord) {
+  const user = faker.helpers.arrayElement(users);
+  const record = generateLogEntry(user);
+
+  await writeRecord(JSON.stringify(record) + "\n");
+  count++;
+}
+
+if (count % LOG_INTERVAL === 0) {
+  const { size } = statSync(LOG_FILE);
+  console.log(
+    `Registers ${count.toLocaleString()}, Size: ${convertFromBytesToGB(size)} GB`,
+  );
+}
+
+stream.end(() => {
+  const { size } = statSync(LOG_FILE);
+  console.log(
+    `Registers ${count.toLocaleString()}, Size: ${convertFromBytesToGB(size)} GB`,
+  );
+});
