@@ -1,4 +1,6 @@
 // Precisamos gerar um arquivo access.log fake
+
+import { timeStamp } from "node:console";
 import { createWriteStream, statSync } from "node:fs";
 import { faker } from "@faker-js/faker";
 
@@ -31,4 +33,21 @@ function generateUser() {
     job_title: faker.name.jobTitle(),
     id: faker.datatype.uuid(),
   };
+}
+
+function generateLogEntry(user) {
+  return {
+    ...user,
+    timeStamp: faker.date.recent().toISOString(),
+  };
+}
+
+function writerRecord(line) {
+  return new Promise((resolve) => {
+    if (!stream.write(line)) {
+      stream.once("drain", resolve);
+    } else {
+      resolve;
+    }
+  });
 }
